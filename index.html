@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG PDF Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a1f1f 0%, #0d2d2d 50%, #1a4d4d 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            top: -400px;
+            right: -400px;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, transparent 70%);
+            border-radius: 50%;
+            bottom: -300px;
+            left: -300px;
+            animation: float 15s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(50px, 50px) rotate(180deg); }
+        }
+
+        .container {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            max-width: 1400px;
+            width: 100%;
+            overflow: hidden;
+            z-index: 1;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #e2e8f0;
+            animation: fadeIn 1s ease-out;
+        }
+        
+        .header h1 .gradient-text {
+            background: linear-gradient(135deg, #10b981 0%, #14b8a6 50%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: rgba(148, 163, 184, 1);
+            font-size: 1em;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            animation: fadeIn 1.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .upload-section, .chat-section {
+            padding: 40px;
+        }
+
+        .upload-section {
+            border-right: 1px solid rgba(16, 185, 129, 0.25);
+            background: rgba(17, 24, 39, 0.5);
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            margin-bottom: 30px;
+            color: #e2e8f0;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0;
+            animation: slideRight 0.6s ease-out forwards;
+            animation-delay: 0.3s;
+        }
+
+        @keyframes slideRight {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(16, 185, 129, 0.5);
+            border-radius: 20px;
+            padding: 50px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(31, 41, 55, 0.5);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.15), transparent);
+            transition: left 0.5s;
+        }
+
+        .upload-area:hover::before {
+            left: 100%;
+        }
+
+        .upload-area:hover {
+            border-color: rgba(6, 182, 212, 0.7);
+            background: rgba(31, 41, 55, 0.7);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .upload-area.dragging {
+            border-color: rgba(6, 182, 212, 0.9);
+            background: rgba(31, 41, 55, 0.9);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
+            color: white;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            padding: 14px 35px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(6, 182, 212, 0.5);
+            background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            background: rgba(16, 185, 129, 0.3);
+        }
+
+        .btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .status-message {
+            margin-top: 25px;
+            padding: 18px 25px;
+            border-radius: 12px;
+            display: none;
+            animation: slideIn 0.4s ease-out;
+            backdrop-filter: blur(10px);
+            font-size: 0.9em;
+            letter-spacing: 0.3px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status-message.success {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.35);
+        }
+
+        .status-message.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+        }
+
+        .chat-container {
+            height: 420px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-bottom: 25px;
+            background: rgba(17, 24, 39, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: rgba(31, 41, 55, 0.5);
+            border-radius: 10px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: rgba(16, 185, 129, 0.6);
+            border-radius: 10px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(6, 182, 212, 0.8);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 16px 22px;
+            border-radius: 16px;
+            max-width: 85%;
+            word-wrap: break-word;
+            animation: messageSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            line-height: 1.6;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .message.user {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(6, 182, 212, 0.35) 100%);
+            color: #e2e8f0;
+            margin-left: auto;
+            text-align: right;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25);
+        }
+
+        .message.assistant {
+            background: rgba(31, 41, 55, 0.7);
+            color: #cbd5e1;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+        }
+
+        .message.assistant .sources {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(16, 185, 129, 0.25);
+            font-size: 0.85em;
+            color: #94a3b8;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 16px 25px;
+            background: rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            border-radius: 12px;
+            font-size: 0.95em;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #e2e8f0;
+            letter-spacing: 0.3px;
+        }
+
+        .input-area input::placeholder {
+            color: #64748b;
+        }
+
+        .input-area input:focus {
+            background: rgba(31, 41, 55, 0.9);
+            border-color: rgba(6, 182, 212, 0.7);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            color: #94a3b8;
+        }
+
+        .loader.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 15px;
+            border: 3px solid rgba(16, 185, 129, 0.3);
+            border-top: 3px solid #14b8a6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-info {
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            display: none;
+            color: #cbd5e1;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        @media (max-width: 968px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            .upload-section {
+                border-right: none;
+                border-bottom: 1px solid rgba(16, 185, 129, 0.25);
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .chat-container {
+                height: 350px;
+            }
+        }
+
+        strong {
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .upload-text {
+            color: #e2e8f0;
+            font-size: 1.05em;
+            margin-bottom: 8px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .upload-subtext {
+            color: #94a3b8;
+            font-size: 0.9em;
+            font-weight: 400;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 <span class="gradient-text">RAG PDF CHATBOT</span></h1>
+            <p>Intelligent document analysis powered by AI</p>
+        </div>
+
+        <div class="content">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <div class="section-title">
+                    📄 Upload Document
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">
+                        <strong>Drag & drop your PDF here</strong>
+                    </p>
+                    <p class="upload-subtext">or click to browse</p>
+                    <button class="btn" onclick="document.getElementById('fileInput').click()">
+                        <span>Choose File</span>
+                    </button>
+                    <input type="file" id="fileInput" accept=".pdf">
+                </div>
+
+                <div class="file-info" id="fileInfo">
+                    <div style="margin-bottom: 15px;">
+                        <strong>Selected:</strong> <span id="fileName"></span>
+                    </div>
+                    <button class="btn" id="uploadBtn" style="width: 100%;">
+                        <span>Upload & Process</span>
+                    </button>
+                </div>
+
+                <div class="status-message" id="statusMessage"></div>
+
+                <div class="loader" id="uploadLoader">
+                    <div class="spinner"></div>
+                    <p>Processing your document...</p>
+                </div>
+            </div>
+
+            <!-- Chat Section -->
+            <div class="chat-section">
+                <div class="section-title">
+                    💬 Conversation
+                </div>
+
+                <div class="chat-container" id="chatContainer">
+                    <div class="message assistant">
+                        <strong>Assistant</strong><br>
+                        Hello! Upload a PDF document and I'll help you extract insights and answer questions about its content.
+                    </div>
+                </div>
+
+                <div class="loader" id="queryLoader">
+                    <div class="spinner"></div>
+                    <p>Analyzing...</p>
+                </div>
+
+                <div class="input-area">
+                    <input 
+                        type="text" 
+                        id="questionInput" 
+                        placeholder="Ask anything about your document..."
+                        disabled
+                    >
+                    <button class="btn" id="sendBtn" disabled>
+                        <span>Send</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let pdfUploaded = false;
+
+        // DOM Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const uploadLoader = document.getElementById('uploadLoader');
+        const chatContainer = document.getElementById('chatContainer');
+        const questionInput = document.getElementById('questionInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const queryLoader = document.getElementById('queryLoader');
+
+        // Drag and Drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragging');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragging');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragging');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                handleFileSelect(files[0]);
+            } else {
+                showStatus('Please drop a valid PDF file', 'error');
+            }
+        });
+
+        // File Input Change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        // Handle File Selection
+        function handleFileSelect(file) {
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileInfo.classList.add('show');
+            hideStatus();
+        }
+
+        // Upload PDF
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            uploadBtn.disabled = true;
+            uploadLoader.classList.add('active');
+            hideStatus();
+
+            try {
+                const response = await fetch('/upload_pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showStatus(`${result.message} (${result.doc_count} chunks)`, 'success');
+                    pdfUploaded = true;
+                    questionInput.disabled = false;
+                    sendBtn.disabled = false;
+                    addMessage('assistant', `✅ Document processed successfully! You can now ask questions about "${selectedFile.name}".`);
+                } else {
+                    showStatus('Error: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Upload failed: ' + error.message, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadLoader.classList.remove('active');
+            }
+        });
+
+        // Send Question
+        sendBtn.addEventListener('click', sendQuestion);
+        questionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendQuestion();
+        });
+
+        async function sendQuestion() {
+            const question = questionInput.value.trim();
+            if (!question || !pdfUploaded) return;
+
+            addMessage('user', question);
+            questionInput.value = '';
+            questionInput.disabled = true;
+            sendBtn.disabled = true;
+            queryLoader.classList.add('active');
+
+            try {
+                const formData = new FormData();
+                formData.append('question', question);
+                formData.append('top_k', 3);
+
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    let message = `<strong>Answer</strong><br><br>${result.answer}`;
+                    
+                    if (result.sources && result.sources.length > 0) {
+                        message += '<div class="sources"><strong>📚 Sources</strong><br>';
+                        result.sources.forEach((source, idx) => {
+                            message += `• ${source.filename} (chunk ${source.chunk_index})<br>`;
+                        });
+                        message += '</div>';
+                    }
+                    
+                    addMessage('assistant', message);
+                } else {
+                    addMessage('assistant', '❌ Error: ' + result.message);
+                }
+            } catch (error) {
+                addMessage('assistant', '❌ Query failed: ' + error.message);
+            } finally {
+                questionInput.disabled = false;
+                sendBtn.disabled = false;
+                queryLoader.classList.remove('active');
+                questionInput.focus();
+            }
+        }
+
+        // Add Message to Chat
+        function addMessage(type, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            if (type === 'user') {
+                messageDiv.innerHTML = `<strong>You</strong><br><br>${content}`;
+            } else {
+                messageDiv.innerHTML = content;
+            }
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Show Status Message
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = 'block';
+        }
+
+        // Hide Status Message
+        function hideStatus() {
+            statusMessage.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
