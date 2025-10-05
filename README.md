@@ -66,6 +66,13 @@ Copy code
 pip install -r requirements.txt
 Set up Environment Variables:
 Create a .env file in the project root and fill in the required Google and Chroma API keys and configurations.
+In th environment need to add:
+1. GOOGLE_API_KEY
+2. CHROMA_API_KEY
+3. CHROMA_TENANT
+4. CHROMA_DATABASE
+5. EMBEDDING_MODEL
+6. GENERATION_MODEL
 
 Running the Application
 Once you’ve configured the environment variables and installed the dependencies, you can run the app with:
